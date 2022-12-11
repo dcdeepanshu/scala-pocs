@@ -1,5 +1,8 @@
 package datastreams
 
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
+import org.apache.flink.core.fs.Path
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
 import org.apache.flink.streaming.api.scala._
 
 
@@ -52,28 +55,42 @@ object EssentialStreams {
     env.execute()
   }
 
+
   def fizzBuzz(n: Int): Unit = {
     val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
-    val numbers = env.fromSequence(1, 100)
+    val numbers: DataStream[Long] = env.fromSequence(1, 100)
 
 
     val fizzBuzzed = numbers
       .map((n) => {
         val isDivisbleByThree: Boolean =  n % 3 == 0
         val isDivisbleByFive: Boolean =  n % 5 == 0
-        if (isDivisbleByThree && isDivisbleByFive) (n, "fizzbuzz")
-        else if (isDivisbleByThree) (n, "fizz")
-        else if (isDivisbleByFive) (n, "buzz")
-        else (n, s"$n")
-      })
 
-    fizzBuzzed.print()
+        val result = if (isDivisbleByThree && isDivisbleByFive) "fizzbuzz"
+        else if (isDivisbleByThree) "fizz"
+        else if (isDivisbleByFive) "buzz"
+        else (n, s"$n")
+
+        (n, result)
+      })
+      .filter(_._2 == "fizzbuzz")
+      .map(_._1)
+      .setParallelism(4)
+
+
+    //add a sink - file writing
+    fizzBuzzed.addSink(
+      StreamingFileSink.forRowFormat(
+        new Path("output/fizzbuzz_sink"),
+        new SimpleStringEncoder[Long]("UTF-8")
+      ).build()
+    )
 
     env.execute()
   }
 
   def main(args: Array[String]): Unit = {
-    fizzBuzz(50)
+    fizzBuzz(100)
   }
 
 }
