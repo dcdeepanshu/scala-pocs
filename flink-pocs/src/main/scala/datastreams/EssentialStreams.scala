@@ -24,8 +24,56 @@ object EssentialStreams {
   }
 
 
+  //transformations
+  def demoTransformations(): Unit = {
+    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    val numbers: DataStream[Int] = env.fromElements(1,2,3,4)
+
+    //check parallelism/no of cores of machine
+    println(s"Current parallelism/cores: ${env.getParallelism}")
+
+    env.setParallelism(2)
+
+    //map
+    val doubledNumbers: DataStream[Int] = numbers.map(_ * 2)
+
+    //flat map
+    val expandedNumbers: DataStream[Int] = numbers
+      .flatMap(n => List(n, n + 1))
+      .setParallelism(1) //set parallelism for this specific transformation
+
+    //filter
+    val filteredEvenNumbers: DataStream[Int] = numbers.filter(_ % 2 == 0)
+
+
+    expandedNumbers.print()
+    //expandedNumbers.writeAsText("output/expandedStream")
+
+    env.execute()
+  }
+
+  def fizzBuzz(n: Int): Unit = {
+    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    val numbers = env.fromSequence(1, 100)
+
+
+    val fizzBuzzed = numbers
+      .map((n) => {
+        val isDivisbleByThree: Boolean =  n % 3 == 0
+        val isDivisbleByFive: Boolean =  n % 5 == 0
+        if (isDivisbleByThree && isDivisbleByFive) (n, "fizzbuzz")
+        else if (isDivisbleByThree) (n, "fizz")
+        else if (isDivisbleByFive) (n, "buzz")
+        else (n, s"$n")
+      })
+
+    fizzBuzzed.print()
+
+    env.execute()
+  }
+
   def main(args: Array[String]): Unit = {
-    applicationTemplate()
+    fizzBuzz(50)
   }
 
 }
